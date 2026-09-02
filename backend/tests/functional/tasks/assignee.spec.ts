@@ -13,6 +13,11 @@ import testUtils from '@adonisjs/core/services/test_utils'
  * las construyen transformers distintos: una sola de las dos no demuestra nada
  * de la otra.
  *
+ * Por eso cada test afirma sobre las dos lecturas **de una vez** en lugar de
+ * repetir la aserción dentro de un bucle: una aserción por lectura corta el
+ * test en la primera que falle y deja la otra sin ejecutar, que es justo la
+ * comparación que se ha venido a hacer.
+ *
  * El aislamiento es una transacción global, por el mismo motivo que en
  * `tests/functional/auth/`: la suite functional pega contra el mismo fichero
  * SQLite que el servidor de desarrollo.
@@ -31,6 +36,7 @@ test.group('Tasks | responsable', (group) => {
     await User.create({ fullName, email, password: 'secreto123' })
 
     const login = await client.post('/api/v1/auth/login').json({ email, password: 'secreto123' })
+    login.assertStatus(200)
     const token = login.body().data.token as string
 
     const creada = await client
@@ -44,8 +50,9 @@ test.group('Tasks | responsable', (group) => {
   }
 
   /**
-   * El responsable tal y como lo devuelven las dos lecturas del espacio, para
-   * poder afirmar lo mismo de ambas sin repetir las peticiones en cada test.
+   * El responsable de esa tarea según cada una de las dos lecturas del espacio,
+   * emparejado con el nombre de la lectura para que el fallo diga cuál de las
+   * dos es la que incumple.
    */
   async function responsableSegunCadaLectura(client: any, token: string, id: number) {
     const lista = await client.get('/api/v1/tasks').header('Authorization', `Bearer ${token}`)
@@ -58,22 +65,28 @@ test.group('Tasks | responsable', (group) => {
     suelta.assertStatus(200)
 
     const enLaLista = lista.body().data.find((tarea: any) => tarea.id === id)
-
-    return {
-      lista: enLaLista.assignee,
-      suelta: suelta.body().data.assignee,
+    if (!enLaLista) {
+      throw new Error(`la tarea ${id} no aparece en la lista del espacio`)
     }
+
+    return [
+      ['lista', enLaLista.assignee],
+      ['suelta', suelta.body().data.assignee],
+    ] as Array<[string, any]>
   }
 
   test('el responsable llega con su nombre y sus iniciales', async ({ client, assert }) => {
     const { token, id } = await tareaDe(client, 'Ada Lovelace', 'ada@example.com')
 
-    const responsable = await responsableSegunCadaLectura(client, token, id)
+    const lecturas = await responsableSegunCadaLectura(client, token, id)
 
-    for (const [lectura, assignee] of Object.entries(responsable)) {
-      assert.equal(assignee.fullName, 'Ada Lovelace', `en la lectura «${lectura}»`)
-      assert.equal(assignee.initials, 'AL', `en la lectura «${lectura}»`)
-    }
+    assert.deepEqual(
+      lecturas.map(([lectura, assignee]) => [lectura, assignee.fullName, assignee.initials]),
+      [
+        ['lista', 'Ada Lovelace', 'AL'],
+        ['suelta', 'Ada Lovelace', 'AL'],
+      ]
+    )
   })
 
   test('el responsable no trae el email ni ningún otro dato de la cuenta', async ({
@@ -82,27 +95,32 @@ test.group('Tasks | responsable', (group) => {
   }) => {
     const { token, id } = await tareaDe(client, 'Ada Lovelace', 'ada@example.com')
 
-    const responsable = await responsableSegunCadaLectura(client, token, id)
+    const lecturas = await responsableSegunCadaLectura(client, token, id)
 
-    for (const [lectura, assignee] of Object.entries(responsable)) {
-      // Se comprueba también sobre el JSON entero: el email podría llegar bajo
-      // otra clave y las aserciones por propiedad no lo verían.
-      assert.notInclude(
-        JSON.stringify(assignee),
-        'ada@example.com',
-        `el email sale en la lectura «${lectura}»`
-      )
-      assert.notProperty(assignee, 'email', `en la lectura «${lectura}»`)
-      assert.notProperty(assignee, 'password', `en la lectura «${lectura}»`)
+    // El requisito dice «ningún otro dato de esa cuenta», no solo el email, así
+    // que se fija la forma entera y no la ausencia de una lista de sospechosos:
+    // añadir un campo aquí tiene que ser una decisión, no un descuido.
+    //
+    // Va antes que la comprobación del email porque es la más ancha de las dos.
+    // Las claves se comparan como una sola cadena y no como listas: el diff de
+    // la aserción recorta cualquier lista de más de un elemento a «…(2)», y el
+    // fallo dejaría de decir qué campo sobra ni en cuál de las dos lecturas.
+    assert.equal(
+      lecturas
+        .map(([lectura, assignee]) => `${lectura}: ${Object.keys(assignee).sort().join(', ')}`)
+        .join(' | '),
+      'lista: fullName, id, initials | suelta: fullName, id, initials'
+    )
 
-      // El requisito dice «ningún otro dato de esa cuenta», no solo el email:
-      // lo justo para identificarlo en la lista y nada más.
-      assert.deepEqual(
-        Object.keys(assignee).sort(),
-        ['fullName', 'id', 'initials'],
-        `en la lectura «${lectura}»`
-      )
-    }
+    // Se busca sobre el JSON entero y no por la clave `email`: el email podría
+    // llegar bajo otro nombre y una aserción por propiedad no lo vería.
+    assert.deepEqual(
+      lecturas
+        .filter(([, assignee]) => JSON.stringify(assignee).includes('ada@example.com'))
+        .map(([lectura]) => lectura),
+      [],
+      'lecturas que filtran el email del responsable'
+    )
   })
 
   test('una cuenta sin nombre llega con el nombre nulo y las iniciales igualmente', async ({
@@ -111,20 +129,30 @@ test.group('Tasks | responsable', (group) => {
   }) => {
     const { token, id } = await tareaDe(client, null, 'sin-nombre@example.com')
 
-    const responsable = await responsableSegunCadaLectura(client, token, id)
+    const lecturas = await responsableSegunCadaLectura(client, token, id)
 
-    for (const [lectura, assignee] of Object.entries(responsable)) {
-      assert.isNull(assignee.fullName, `en la lectura «${lectura}»`)
+    assert.deepEqual(
+      lecturas.map(([lectura, assignee]) => [lectura, assignee.fullName]),
+      [
+        ['lista', null],
+        ['suelta', null],
+      ]
+    )
 
-      // Las iniciales tienen que seguir llegando: son lo que permite pintar a
-      // esa persona sin recurrir a su email.
-      assert.isString(assignee.initials, `en la lectura «${lectura}»`)
-      assert.isNotEmpty(assignee.initials, `en la lectura «${lectura}»`)
-      assert.notInclude(
-        assignee.initials,
-        '@',
-        `las iniciales delatan el email en la lectura «${lectura}»`
-      )
-    }
+    // De las iniciales, aquí solo se exige que lleguen y que basten para pintar
+    // a esa persona sin recurrir a su email. Cómo se derivan es el requisito
+    // «Iniciales de la cuenta» de auth, y lo cubre `auth/initials.spec.ts`.
+    assert.deepEqual(
+      lecturas
+        .filter(
+          ([, assignee]) =>
+            typeof assignee.initials !== 'string' ||
+            assignee.initials === '' ||
+            assignee.initials.includes('@')
+        )
+        .map(([lectura]) => lectura),
+      [],
+      'lecturas cuyas iniciales no sirven para representar a la cuenta'
+    )
   })
 })
