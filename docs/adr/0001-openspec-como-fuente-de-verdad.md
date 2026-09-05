@@ -1,4 +1,4 @@
-# 2. Las delta-specs de OpenSpec como fuente de verdad viva
+# 1. Las delta-specs de OpenSpec como fuente de verdad viva
 
 ## Contexto
 
