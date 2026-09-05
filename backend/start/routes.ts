@@ -10,6 +10,7 @@
 import { middleware } from '#start/kernel'
 import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
+import openapi from '@foadonis/openapi/services/main'
 
 router.get('/', () => {
   return { hello: 'world' }
@@ -47,3 +48,17 @@ router
       .use(middleware.auth())
   })
   .prefix('/api/v1')
+
+/**
+ * La documentación de la API: el documento OpenAPI y la interfaz que lo pinta.
+ *
+ * Se registra sin argumentos, que es la llamada que documenta el paquete. El
+ * grupo cuelga de `/api` y no de `/api/v1` a propósito: el documento describe la
+ * API entera, incluidas las versiones que vengan, así que versionarlo junto a
+ * las rutas lo dejaría desfasado en cuanto exista una v2.
+ *
+ * Va fuera del grupo de arriba y sin `middleware.auth()`: una documentación que
+ * exige un token para leerse no la lee quien más la necesita, que es quien
+ * todavía no sabe cómo conseguir uno.
+ */
+openapi.registerRoutes()
