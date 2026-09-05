@@ -49,6 +49,8 @@ En concreto:
 
 ## Estado
 
+**Reemplazada el 2027-09-05 por [2. Los tests de integración como única fuente de verdad ejecutable](./0002-tests-como-fuente-de-verdad-ejecutable.md).** Lo que sigue es el estado que tuvo mientras estuvo vigente, y se conserva sin tocar: el contexto y la decisión de abajo son lo que se creía y se decidió entonces.
+
 Aceptada el 2026-09-05.
 
 Es un registro *a posteriori*: la práctica lleva vigente desde los tres changes del 2026-08-13, y este ADR la hace explícita en vez de introducirla. Queda pendiente reflejarla en `CLAUDE.md`, que hoy no menciona `openspec/` en ninguna parte.
