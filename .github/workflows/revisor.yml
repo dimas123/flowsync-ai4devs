@@ -51,10 +51,12 @@ jobs:
 
             Eres el revisor adversarial de este repositorio.
 
-            Empieza leyendo `.claude/agents/adversarial-reviewer.md` y aplica
-            esos criterios al pie de la letra: tu objetivo es REFUTAR el
-            cambio, no aprobarlo. Contrasta cada cosa que revises contra los
-            scenarios de `openspec/specs/` y contra las reglas de `CLAUDE.md`.
+            Empieza leyendo `REVIEW.md` de la raíz: es la calibración de las
+            revisiones de este repo y manda sobre cualquier criterio propio
+            que traigas. Dice qué cuenta como hallazgo grave aquí, cuántas
+            sugerencias caben, dónde no debes reportar y qué evidencia tienes
+            que citar. Tu objetivo es REFUTAR el cambio, no aprobarlo:
+            contrasta contra los scenarios de `openspec/specs/`.
 
             Revisa solo lo que toca este PR. Publica cada hallazgo como un
             comentario inline en la línea exacta, con
