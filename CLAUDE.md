@@ -28,6 +28,8 @@ npm run format                                  # prettier --write
 npm run typecheck                               # tsc --noEmit
 ```
 
+El proyecto corre sobre **Node 24** (`.nvmrc` en la raíz, `engines` en los dos `package.json`). No es una preferencia: `better-sqlite3` se compila contra el ABI del Node con el que se instaló, así que con otra versión el backend revienta con `NODE_MODULE_VERSION`. Si pasa, `npm rebuild better-sqlite3` desde `backend/` con el Node correcto activo.
+
 `package.json` fija `overrides: { "jsonschema": "1.4.1" }`. **No lo quites**: con `jsonschema@1.5.0` el validador de metadatos de `@adonisjs/ace` revienta con `Invalid URL` al escanear `commands/`, y eso tumba *cualquier* `node ace` (serve, test, migrations incluidos) en cuanto el proyecto tiene un comando propio. Es un bug de `resolveUrl` en 1.5.0, que resuelve la base a `/undefined` y luego no puede resolver el `$ref` de raíz del esquema.
 
 Tests (Japa). Dos suites declaradas en `adonisrc.ts`: `unit` (`tests/unit/**/*.spec.ts`, timeout 2s) y `functional` (`tests/functional/**/*.spec.ts`, timeout 30s). Hoy solo hay tests **functional de `auth`** (`tests/functional/auth/`): registro, login, sesión e iniciales. **`tests/unit/` no existe**, y la capability `tasks` no tiene ni un test.

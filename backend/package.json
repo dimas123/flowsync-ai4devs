@@ -40,6 +40,9 @@
     "#start/*": "./start/*.js",
     "#config/*": "./config/*.js"
   },
+  "engines": {
+    "node": ">=24 <25"
+  },
   "overrides": {
     "jsonschema": "1.4.1"
   },
@@ -82,5 +85,8 @@
       "./app/middleware/*.ts"
     ]
   },
-  "prettier": "@adonisjs/prettier-config"
+  "prettier": "@adonisjs/prettier-config",
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true
+  }
 }
