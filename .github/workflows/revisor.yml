@@ -42,6 +42,7 @@ jobs:
           # de API de la consola, la entrada sería `anthropic_api_key`: no son
           # intercambiables. Ver `docs/ci-revisor.md`.
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
           # Comentario de seguimiento en el PR con el progreso de la revisión.
           track_progress: true
